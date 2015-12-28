@@ -1,0 +1,38 @@
+---
+- hosts: vagrant
+  sudo: yes
+
+  tasks:
+
+   - name: check if httpd is installed
+     command: systemctl is-active httpd.service
+     register: is_installed
+     changed_when: false
+     failed_when: no 
+     ignore_errors: yes
+
+   - name: yum groupinstall "Web Server"
+     yum: name="@web-server"
+     when: is_installed.stdout == "unknown"
+
+   - name: check if httpd is running
+     command: systemctl is-active httpd.service
+     register: is_active
+     changed_when: false
+     failed_when: is_active.rc not in [0,1] 
+     ignore_errors: yes
+
+   - name: service start httpd
+     service: name=httpd state=started
+     when: is_active.stdout != "active"
+
+   - name: check if httpd is enabled
+     command: systemctl is-enabled httpd.service
+     register: is_enabled
+     changed_when: false
+     failed_when: is_enabled.rc not in [0,1] 
+     ignore_errors: yes 
+
+   - name: chkconfig httpd on 
+     service: name=httpd enabled=yes
+     when: is_enabled.stdout != "enabled"
